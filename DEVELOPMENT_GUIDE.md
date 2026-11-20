@@ -38,7 +38,7 @@ DeXo 是便携式桌面端多账号、多交易所策略交易工具：
 5. **风控中心** `src/risk/`：四层风控（全局、账户、策略、订单）与全局 Kill Switch。Kill Switch 触发后禁止新开仓、停止策略开仓，保留撤单、减仓与平仓能力，记录触发原因，用户可手动解除。禁止把停止新开仓与强制平仓设计成同一个操作。
 6. **交易中心** `src/trading/`：订单、成交、持仓记录，交易历史，状态持久化，启动恢复与交易所状态核对。SQLite 是本地持久化基础；交易所实际持仓与成交是恢复时必须核对的数据来源，本地数据库不能被简单视为真实仓位。
 7. **设置中心** `src/settings/`：系统设置、便携式数据目录、日志设置、用户配置、安全设置。
-8. **交易所中心** `src/exchanges/`：每个交易所单独实现 Adapter，首批规划 Hyperliquid、Entropy、Arcus、Bulk、Lighter、AsterDex。统一接口、统一数据结构，交易所特殊结构不得泄漏到策略层。接入前逐一核实官方 API、订单类型、签名方式、限频规则、测试环境与真实交易能力，不得假设 API 已经可用。
+8. **交易所中心** `src/exchanges/`：每个独立交易所单独实现 Adapter。规划：Hyperliquid 为首个接入对象；Entropy 不是独立交易所，而是 Hyperliquid 的 HIP-3 子 DEX（命名空间 io），经 Hyperliquid Adapter 的 namespace 接入，不建独立 Adapter；Arcus 为候选，其永续 API 仍在分批 beta 开放，接入前必须核验开放状态与 Ed25519 API key 认证；Bulk 为独立候选 Adapter，采用 Solana 钱包签名认证（非 API key 模式），须单独设计；Lighter、AsterDex 为候选。统一接口、统一数据结构，交易所特殊结构不得泄漏到策略层。接入前逐一核实官方 API、订单类型、签名方式、限频规则、测试环境与真实交易能力，不得假设 API 已经可用；必须区分独立交易所、子 DEX/命名空间与独立认证体系（见 AGENTS.md 第 9.3 节），接入状态区分 VERIFIED / CANDIDATE / SUBMARKET / UNSUPPORTED，未核验不得标记为已验证。
 9. **执行层** `src/execution/`：加载账户、启动策略、向策略提供数据中心接口、接收订单请求、调用风控、通过后调用交易所 Adapter、管理订单生命周期与双腿交易、处理失败与回滚、将结果写入交易中心、异常恢复与状态核对。执行层不负责策略判断，但必须负责完整的交易生命周期。
 
 目录结构以仓库根的 `src-tauri/`（Rust 后端）+ `src/`（React 前端）为准，完整树见 IMPLEMENTATION_SPEC.md。允许增加必要文件，但不要无理由改变顶层架构。
@@ -92,18 +92,17 @@ DeXo 是便携式桌面端多账号、多交易所策略交易工具：
 数据根目录由 exe 所在目录决定：
 
 ```rust
-pub fn data_dir() -> PathBuf {
-    std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("data")
+pub fn data_dir() -> Result<PathBuf, PathError> {
+    let exe = std::env::current_exe().map_err(PathError::ExePathUnavailable)?;
+    data_dir_for_exe(&exe)
 }
 ```
 
 所有数据路径基于 `data_dir()`。目录规划：`data/accounts/`、`data/strategies/`、`data/database/dexo.db`、`data/logs/`、`data/cache/`、`data/credentials/`、`data/settings.json`（另有 WebView 数据 `data/webview/`，保证不写 LocalAppData）。
 
 必须实现：启动时创建缺失目录；检查数据目录是否可写；无权限时明确报错；不允许静默切换到 AppData；不允许将用户数据散落到 exe 文件夹之外；日志文件滚动管理；数据库支持安全关闭和重新启动。开发环境和正式打包环境必须分别验证数据目录。
+
+已知缺口：Tauri 的 `appDirectoriesOverride` 尚未设置。当前仅主窗口 WebView 数据目录钉在 `data/webview/`，代码未调用 Tauri 目录 API、未引入插件，因此暂不影响便携性；第一次使用 Tauri Directory API（app_config_dir、app_data_dir、app_local_data_dir、app_cache_dir、app_log_dir）或相关插件时，必须先把这些目录逐项映射到 `data/` 下并实机验证，不得宣称 Tauri 全部数据目录已完成便携重定向（AGENTS.md 第 6.5 节）。
 
 ## 11. 多账户并发
 

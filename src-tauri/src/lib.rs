@@ -66,7 +66,8 @@ fn stage<T, E: std::fmt::Display>(name: &str, result: Result<T, E>) -> T {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let paths = DataPaths::from_root(data_dir());
+    let root = stage("数据目录解析", data_dir());
+    let paths = DataPaths::from_root(root);
     stage("数据目录初始化", ensure_data_dirs(&paths));
     init_logging(&paths);
     info!(version = env!("CARGO_PKG_VERSION"), data_dir = %paths.root.display(), "DeXo starting");

@@ -36,6 +36,7 @@ DeXo/
 ├── README.md
 ├── DEVELOPMENT_GUIDE.md
 ├── IMPLEMENTATION_SPEC.md
+├── AGENTS.md
 └── .gitignore
 ```
 
@@ -54,6 +55,8 @@ DeXo/
 - 前端骨架：左侧导航七个中心页面（总览、交易中心、策略中心、账户中心、数据中心、风控中心、系统设置），总览页通过 `app_status` Command 展示后端版本、数据目录、数据库路径与就绪状态；其余页面为骨架占位并注明实现阶段。
 - Tauri 权限：capabilities 仅授予 `core:default`，不引入任何插件。
 - 图标：仓库只保存 `src-tauri/icons/icon.svg`，二进制图标（ico/png/icns）由 `npx tauri icon src-tauri/icons/icon.svg` 生成，不提交二进制文件。
+- 路径解析（2026-11-20 修正）：`data_dir()` 与 `data_dir_for_exe()` 返回 `Result<PathBuf, PathError>`，`current_exe()` 失败或 exe 路径无有效父目录时明确报错，经启动 stage 机制弹原生对话框后退出；禁止静默回退到当前工作目录或系统目录（AGENTS.md 第 6.3、21.3 节）。
+- 已知缺口（不阻塞 Phase 1）：尚未设置 Tauri `appDirectoriesOverride`。当前代码不调用 Tauri 目录 API、未引入插件，只有主窗口 WebView 数据目录被钉到 `data/webview/`；第一次使用 Tauri Directory API（app_config_dir / app_data_dir / app_local_data_dir / app_cache_dir / app_log_dir）或引入相关插件时，必须先按 per-directory 方式把这些目录映射到 `data/` 下并做实机验证（AGENTS.md 第 6.5、21.4 节）。
 
 验收标准：
 
@@ -90,6 +93,8 @@ DeXo/
 
 任务：SQLite 订单、成交、持仓记录与交易历史；数据库事务；启动状态核对（本地记录与交易所未完成订单、成交、实际持仓对比，差异生成异常记录）。
 
+数据库迁移必须执行严格规则（AGENTS.md 第 11.4 节）：仅对真正的全新数据库执行初始 Schema 创建并写入版本；已有业务表但缺少 `dexo_meta` 或有效版本记录时必须拒绝自动初始化；不得用 `INSERT OR IGNORE` 掩盖版本异常（Phase 1 的 database.rs 目前只有 `dexo_meta` 一张表，其 INSERT OR IGNORE 写法必须在本阶段按此规则改造）；不得静默重建或覆盖用户数据库；迁移按明确版本顺序、尽量在事务中执行，失败保留可诊断信息，并考虑备份与恢复策略。
+
 验收：交易数据可持久化；程序重启后可以读取；不存在不合理的状态覆盖。
 
 ## Phase 7：执行层
@@ -124,7 +129,7 @@ DeXo/
 
 ## Phase 12：其他交易所
 
-依次接入 Entropy、Arcus、Bulk、Lighter、AsterDex，每个交易所单独开发、单独测试；接入前核实官方 API，不得复制未经核实的 API 实现，资料不足先报告缺失信息。
+按修正后的清单处理（2026-11-20 核查并经用户确认）：Entropy 不是独立交易所，而是 Hyperliquid 的 HIP-3 子 DEX（命名空间 io，市场如 io:ANTH、io:SNDK），经 Hyperliquid Adapter 的 dex namespace 接入，不开发独立 entropy Adapter（`exchanges/entropy.rs` 仅记录该决策）；Arcus 为候选——永续合约仍在分批 beta 开放（现货已开，交易需 Ed25519 API key），开发前必须核验 API 开放状态，不得假设随时可用；Bulk 为独立候选 Adapter——Solana 永续 DEX，主网 API 已上线（docs.bulk.trade），但采用 Solana 钱包签名认证而非 API key 模式，认证与签名须单独设计；Lighter、AsterDex 为候选，接入前各自核实。每个对象单独开发、单独测试；接入前核实官方 API，不得复制未经核实的 API 实现，资料不足先报告缺失信息。
 
 ## Phase 13：正式打包
 

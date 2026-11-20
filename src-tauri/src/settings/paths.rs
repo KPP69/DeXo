@@ -9,20 +9,23 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Root data directory for the running executable: `<exe dir>/data`.
-pub fn data_dir() -> PathBuf {
-    std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("data")
+///
+/// Fails explicitly when the executable path cannot be resolved; there is
+/// no fallback to the current working directory or any system directory.
+pub fn data_dir() -> Result<PathBuf, PathError> {
+    let exe = std::env::current_exe().map_err(PathError::ExePathUnavailable)?;
+    data_dir_for_exe(&exe)
 }
 
 /// Data directory for an explicit executable path (used by tests).
-pub fn data_dir_for_exe(exe: &Path) -> PathBuf {
-    exe.parent()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("data")
+///
+/// Fails when the path has no usable parent directory (for example a bare
+/// file name), instead of silently producing a relative `data` path.
+pub fn data_dir_for_exe(exe: &Path) -> Result<PathBuf, PathError> {
+    match exe.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => Ok(parent.join("data")),
+        _ => Err(PathError::InvalidExePath(exe.to_path_buf())),
+    }
 }
 
 /// All well-known paths inside the data directory.
@@ -74,6 +77,8 @@ impl DataPaths {
 
 #[derive(Debug)]
 pub enum PathError {
+    ExePathUnavailable(std::io::Error),
+    InvalidExePath(PathBuf),
     CreateFailed {
         path: PathBuf,
         source: std::io::Error,
@@ -87,6 +92,16 @@ pub enum PathError {
 impl std::fmt::Display for PathError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ExePathUnavailable(source) => {
+                write!(f, "failed to resolve the executable path: {source}")
+            }
+            Self::InvalidExePath(exe) => {
+                write!(
+                    f,
+                    "executable path has no parent directory: {}",
+                    exe.display()
+                )
+            }
             Self::CreateFailed { path, source } => {
                 write!(
                     f,
@@ -133,7 +148,24 @@ mod tests {
     #[test]
     fn data_dir_is_beside_the_executable() {
         let exe = Path::new("/opt/dexo/DeXo.exe");
-        assert_eq!(data_dir_for_exe(exe), PathBuf::from("/opt/dexo/data"));
+        assert_eq!(
+            data_dir_for_exe(exe).expect("valid exe path"),
+            PathBuf::from("/opt/dexo/data")
+        );
+    }
+
+    #[test]
+    fn data_dir_rejects_exe_path_without_parent() {
+        // A bare file name has an empty parent; an empty path has none.
+        // Both must fail explicitly instead of falling back to "./data".
+        assert!(matches!(
+            data_dir_for_exe(Path::new("DeXo.exe")),
+            Err(PathError::InvalidExePath(_))
+        ));
+        assert!(matches!(
+            data_dir_for_exe(Path::new("")),
+            Err(PathError::InvalidExePath(_))
+        ));
     }
 
     #[test]
@@ -164,6 +196,18 @@ mod tests {
         }
         // The writability probe must not be left behind.
         assert!(!paths.root.join(".dexo_write_probe").exists());
+    }
+
+    #[test]
+    fn ensure_data_dirs_fails_when_root_is_a_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let file_root = tmp.path().join("data");
+        std::fs::write(&file_root, b"not a directory").expect("write file");
+        let paths = DataPaths::from_root(file_root);
+        assert!(matches!(
+            ensure_data_dirs(&paths),
+            Err(PathError::CreateFailed { .. })
+        ));
     }
 
     #[test]

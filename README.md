@@ -26,7 +26,7 @@
 5. **风控中心** `src-tauri/src/risk/`：全局 / 账户 / 策略 / 订单四层风控与全局 Kill Switch（只禁止新开仓，不等同于强制平仓）。
 6. **交易中心** `src-tauri/src/trading/`：订单、成交、持仓记录与启动核对；交易所是真实仓位的权威来源。
 7. **设置中心** `src-tauri/src/settings/`：便携数据目录、日志与用户配置。
-8. **交易所中心** `src-tauri/src/exchanges/`：每个交易所一个 Adapter，统一 Trait 与统一数据模型。首批规划：Hyperliquid、Entropy、Arcus、Bulk、Lighter、AsterDex（逐一核实官方 API 后接入）。
+8. **交易所中心** `src-tauri/src/exchanges/`：每个独立交易所一个 Adapter，统一 Trait 与统一数据模型。规划：Hyperliquid（首个接入；Entropy 是其 HIP-3 子 DEX，经 Hyperliquid Adapter 的 namespace 接入，不设独立 Adapter）、Arcus（候选，永续 API 开放状态待验证）、Bulk（候选，独立 Adapter，Solana 钱包认证）、Lighter、AsterDex（候选）。全部须逐一核实官方 API 后才接入。
 9. **执行层** `src-tauri/src/execution/`：连接各中心，负责订单完整生命周期、双腿套利执行、失败回滚与异常恢复。网络超时不得直接判失败，必须用 `client_order_id` 查询核实。
 
 ## 便携数据目录
