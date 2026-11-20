@@ -1,0 +1,33 @@
+[package]
+name = "dexo"
+version = "0.1.0"
+description = "DeXo portable multi-account, multi-exchange strategy trading desktop app"
+edition = "2021"
+license = "MIT"
+default-run = "dexo"
+
+[lib]
+name = "dexo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = "=2.7.5"
+
+[dependencies]
+tauri = "=2.12.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tracing-appender = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true

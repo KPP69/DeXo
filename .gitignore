@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+
+# Rust build output
+target/
+src-tauri/target/
+
+# Portable runtime data — never commit user data
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Secrets and credentials — never commit
+.env
+.env.*
+secrets/
+credentials/
+*.key
+*.pem
+
+# Logs
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
