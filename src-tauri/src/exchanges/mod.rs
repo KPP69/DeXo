@@ -2,9 +2,11 @@
 //!
 //! Integration status (must be re-verified against official docs before
 //! any implementation; nothing here is marked verified):
-//! - Hyperliquid: first adapter, Phase 4. Its HIP-3 sub-DEX namespaces
-//!   (for example Entropy, namespace `io`) are served through this
-//!   adapter's namespace support, not through separate adapters.
+//! - Hyperliquid: first adapter, Phase 4 (in progress: read paths live
+//!   on mainnet, write paths implemented and gated off by default). Its
+//!   HIP-3 sub-DEX namespaces (for example Entropy, namespace `io`) are
+//!   served through this adapter's namespace support, not through
+//!   separate adapters.
 //! - Arcus: candidate, Phase 12. Perpetual API availability is rolling
 //!   beta; verify API access and Ed25519 key auth before designing.
 //! - Bulk: candidate, Phase 12, standalone adapter with its own design:

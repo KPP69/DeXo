@@ -96,9 +96,18 @@ DeXo/
 
 ## Phase 4：第一个交易所（Hyperliquid）
 
-任务：按官方 API 接入（接入前核实订单类型、签名、限频、测试环境）：账户余额、持仓查询、资金费率、Order Book、订单提交、订单查询、订单取消、成交记录，全部映射到统一数据结构，不支持的能力返回 Unsupported。
+任务：按官方 API 接入（接入前核实订单类型、签名、限频；只接主网，不接测试网）：账户余额、持仓查询、资金费率、Order Book、订单提交、订单查询、订单取消、成交记录，全部映射到统一数据结构，不支持的能力返回 Unsupported。
 
-验收：数据读取正常；统一模型映射正常；测试环境下订单闭环正常；异常情况可以正确处理。
+验收：数据读取正常；统一模型映射正常；主网小额限价单下单→查单→撤单闭环正常（须用户指定并显式启用）；异常情况可以正确处理。
+
+实现记录（2026-11-21，第一步：只读 + 写路径就绪）：
+
+- 签名方案按产品负责人批准采用 hypersdk 0.3.1（精确锁定，default-features 关、仅 http；评估记录见本节与 Cargo.toml 注释）。主钱包永不进程序：查询用主账户地址，签名只用 API wallet（agent）私钥，approveAgent 由用户在 Hyperliquid 前端自行完成。
+- `HyperliquidAdapter`（exchanges/hyperliquid.rs）实现完整 ExchangeAdapter：get_funding（metaAndAssetCtxs，下一次资金费时间为整点边界推算）、get_orderbook（SDK 无 HTTP l2Book，直连 /info 并分类错误）、get_balance / get_positions（clearinghouseState；余额 total 取 cross margin account_value、available 取 withdrawable）、get_fills（userFillsByTime）、get_order（orderStatus 按 cloid 查，未找到返回 ORDER_NOT_FOUND）、place_order / cancel_order（cancel 先查单确认资产与状态，终态直接返回，撤单后回查确认，查不到则 CancelPending）。
+- 写路径双重门：signer 存在且 `writes_enabled` 显式开启（默认关）才允许发单；市价单 = IOC + 保护价（OrderRequest.price 必填）；价格按市场 tick 取整、数量按 szDecimals 向零截断；client_order_id 必须是 cloid 格式（0x + 32 hex），提供 `new_client_order_id()` 生成；nonce 为毫秒时间戳 + 原子单调递增。
+- HIP-3：构造参数 `dex`（如 "io"）切换命名空间，perp_dexes/perps_from 解析市场，产品 exchange_id 独立（如 entropy）。
+- 错误分类：hypersdk 的 /info 错误是 anyhow 纯文本，按内容分类（429/Too Many Requests → RateLimited，实测命中并已修正分类器）；写操作失败默认 Unknown（结果不确定，必须先查单）。
+- 验证：本地单元测试 43 个全过（含 cloid、funding/orderbook JSON 解析、状态映射、写门默认关）；主网只读实测通过（零地址 + 公开行情：BTC 资金费率、BTC 订单簿 20 档、余额、持仓 0，均经适配器真实返回）。下单闭环未验证——须用户提供 API wallet 并指定小额单后单独进行。
 
 ## Phase 5：数据中心
 
@@ -158,4 +167,4 @@ DeXo/
 
 - 必须建立模拟交易所 Adapter，覆盖：下单成功、下单失败、网络超时、部分成交、完全成交、订单取消、重复订单、双腿不平衡、回滚失败、程序中断、重启恢复、多账户并发。
 - 没有通过模拟异常测试的交易功能不得进入真实交易阶段。
-- 真实交易必须由用户明确启用；默认测试模式；开发过程中严禁用真实账户下单。
+- 真实交易必须由用户明确启用；未启用前只用模拟 Adapter，不连真实交易所；开发过程中严禁用真实账户下单。
