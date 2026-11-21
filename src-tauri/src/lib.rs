@@ -75,8 +75,14 @@ pub fn run() {
     let database = stage("数据库初始化", database::initialise(&paths.database_file));
     info!(database = %paths.database_file.display(), "database ready");
 
+    let accounts = stage(
+        "账户加载",
+        accounts::account_manager::AccountManager::load(&paths.accounts),
+    );
+    info!(accounts = accounts.list().len(), "accounts loaded");
+
     let webview_dir = paths.webview.clone();
-    let app_state = AppState::new(paths, database);
+    let app_state = AppState::new(paths, database, accounts);
 
     let build_result = tauri::Builder::default()
         .manage(app_state)

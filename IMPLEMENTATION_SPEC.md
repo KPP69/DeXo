@@ -87,6 +87,13 @@ DeXo/
 
 验收：可以加载多个账户；不同账户严格隔离；日志与前端不输出敏感信息；提供账户删除与凭证清除。
 
+实现记录（2026-11-21）：
+
+- `AccountManager`（accounts/account_manager.rs）：从 `data/accounts/<id>.json` 加载账户配置（仅非敏感字段）；严格校验——id 限 [A-Za-z0-9_-] 且同时是文件名、重复 id 拒绝、损坏文件使整次加载失败并指明文件；支持按交易所分组、启停（持久化）、新增与删除；写入采用临时文件 + rename 防截断。启动流程已接入：账户加载为独立启动阶段，失败明确报错退出。
+- `Account` 模型启用 `deny_unknown_fields`：账户文件里出现凭证类未知字段直接加载失败，杜绝明文凭证混入普通配置（有测试覆盖）。
+- `CredentialStore` 接口（accounts/credential_store.rs）：put/get/delete + backend_name；`Credentials` 的 Debug 输出脱敏（只显示字段名）。本阶段交付接口与内存后端（测试/开发用，进程退出即消失）；操作系统凭证存储与主密码加密库两个真实后端随账户 UI 接线时实现，在此之前不落盘任何真实凭证——这是安全默认，不是缺口冒充。
+- 本地验证：harness 单元测试 37 个全过（本阶段新增 11 个）；fmt / cargo xwin clippy -D warnings 全过。Windows CI 结果见 PR #1 的 Actions 运行记录。
+
 ## Phase 4：第一个交易所（Hyperliquid）
 
 任务：按官方 API 接入（接入前核实订单类型、签名、限频、测试环境）：账户余额、持仓查询、资金费率、Order Book、订单提交、订单查询、订单取消、成交记录，全部映射到统一数据结构，不支持的能力返回 Unsupported。

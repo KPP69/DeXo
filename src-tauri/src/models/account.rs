@@ -54,8 +54,11 @@ impl Exchange {
 ///
 /// Credentials are deliberately NOT part of this structure: they live in
 /// the credential store (Phase 3) and are never serialised with the
-/// account, written to logs, or sent to the frontend.
+/// account, written to logs, or sent to the frontend. Unknown fields are
+/// rejected outright, so a configuration file that tries to smuggle a
+/// credential field in fails to load instead of being silently stripped.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Account {
     pub id: String,
     /// `Exchange::id` this account trades on.
