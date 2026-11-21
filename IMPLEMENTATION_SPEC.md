@@ -115,6 +115,8 @@ DeXo/
 
 验收：策略可以通过统一接口获取数据；数据过期能够被识别并阻止新订单；策略不直接依赖交易所具体实现。
 
+实现记录（2026-11-21）：`DataCenter`（data/mod.rs）实现 DataAccess，按账户持有 Arc<dyn ExchangeAdapter>，策略只见统一接口、不见交易所实现。四类数据各有带时间戳的 TTL 缓存（data/cache.rs 的 TtlCache）与独立新鲜度上限（FreshnessLimits 默认：funding 30s、order book 5s、balance 15s、positions 15s）。读取语义统一：新鲜缓存直接返回；过期则向适配器刷新并回填；刷新失败且只有过期数据时返回 DataError::StaleData（绝不静默把过期数据喂给策略），无缓存时返回适配器错误（Backend）；未知交易所/账户返回 NotFound。时钟可注入，本地测试 6 个覆盖缓存命中不重复请求、过期刷新、过期+刷新失败 → StaleData、无缓存失败 → Backend、未知对象 → NotFound。WebSocket 实时推送未做，随行情订阅需求在后续阶段接入（缓存层结构已为其预留）。
+
 ## Phase 6：交易中心
 
 任务：SQLite 订单、成交、持仓记录与交易历史；数据库事务；启动状态核对（本地记录与交易所未完成订单、成交、实际持仓对比，差异生成异常记录）。

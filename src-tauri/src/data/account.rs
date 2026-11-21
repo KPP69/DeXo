@@ -1,1 +1,2 @@
-//! Unified account data (balances). Implemented in Phase 5.
+//! Unified account data (balances). Served by the parent `DataCenter`
+//! through its timestamped caches (Phase 5).
