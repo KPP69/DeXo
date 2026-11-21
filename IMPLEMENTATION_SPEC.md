@@ -71,6 +71,16 @@ DeXo/
 
 验收：数据结构编译通过；单元测试通过；不同交易所可以使用统一模型。
 
+实现记录（2026-11-21）：
+
+- `models/` 拆分为 account / market / order / risk / error 五个子模块：全部金额、价格、数量、费率为 `Decimal`；时间戳统一 Unix 毫秒；`Account` 不含任何凭证字段（凭证与账户配置分离，Phase 3 存储）。
+- `Exchange` 带 `kind`：`Standalone` 或 `Namespace`（子 DEX / 市场命名空间，`parent` 指向承载其传输的交易所）。Entropy 按产品层面的独立交易所条目建模（id `entropy`），kind 为 Namespace、parent 为 `hyperliquid`，经 Hyperliquid Adapter 接入，不建独立 Adapter。
+- 订单状态机：`OrderStatus` 14 个状态与受控转移表 `can_transition_to`（含终态判定）；超时只能进入 UNKNOWN 并经 RECONCILING 核对，禁止从 OPEN 直接转 FAILED 或重提。
+- 错误类型：`ExchangeError`（含 `outcome_is_ambiguous` 标记超时/网络/未知三类结果不确定错误）、`DataError`（含 StaleData）、`StrategyError`。
+- `ExchangeAdapter`（exchanges/traits.rs）：实例由账户中心按账户绑定，方法不传 account_id / 凭证；含 place_order / get_order / cancel_order / get_fills；不支持的能力必须返回 Unsupported。测试内含 Mock Adapter 验证统一模型全流程。
+- `Strategy`（strategies/traits.rs）+ `DataAccess`（data/mod.rs）：策略只经数据中心读数、只产出 OrderRequest；`RiskCheck`（risk/mod.rs）：四层顺序检查接口，RiskResult 拒绝必须带层级与原因。
+- 本地验证：harness 单元测试 26 个全过（其中 17 个为本阶段新增）；fmt / cargo xwin check / clippy -D warnings 全过；npm run build 通过。Windows CI 结果见 PR #1 的 Actions 运行记录。
+
 ## Phase 3：账户中心
 
 任务：账户加载、账户分组、多账号管理、账户启停、凭证存储接口（默认操作系统凭证存储，便携模式为主密码加密凭证库，明文存储必须经用户确认）。

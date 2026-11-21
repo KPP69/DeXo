@@ -18,7 +18,9 @@ tauri = "=2.12.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+async-trait = "0.1"
 rusqlite = { version = "0.32", features = ["bundled"] }
+rust_decimal = { version = "1", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tracing-appender = "0.2"
@@ -28,6 +30,7 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_Wind
 
 [dev-dependencies]
 tempfile = "3"
+rust_decimal_macros = "1"
 
 [profile.release]
 lto = true
