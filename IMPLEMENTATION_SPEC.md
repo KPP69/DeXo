@@ -125,6 +125,8 @@ DeXo/
 
 验收：交易数据可持久化；程序重启后可以读取；不存在不合理的状态覆盖。
 
+实现记录（2026-11-21）：Schema 升至 v2。database.rs 已按第 11.4 节严格规则重写：只有真正空库才在单事务内建全量 Schema 并写入版本；已有表但缺 dexo_meta、dexo_meta 缺版本行或版本不可解析、版本高于本程序，一律拒绝并给出可诊断错误；版本为 2 但业务表缺失时报告损坏、绝不静默重建；v1 → v2 迁移在事务内建表并用普通 UPDATE 推进版本（已删除原 INSERT OR IGNORE 写法），旧数据保留。新增四张表：orders（以 client_order_id 为主键）、fills（fill_key 去重，重复记录显式返回未插入）、position_snapshots（只追加快照，最新一条为本地视图）、anomalies（异常记录）。订单写入受状态机守卫：upsert 只允许同状态刷新或 can_transition_to 允许的迁移，非法迁移（如 Open 直达 Cancelled、终态再变更）被拒绝且不改动原记录。reconciliation.rs 实现启动核对：本地未完成订单逐笔按 cloid 查交易所，消失 → LocalOrderMissingRemotely 异常；状态/已成交量不一致 → OrderStateMismatch 异常且仅在合法迁移时向权威记录收敛；持仓与最新快照比对，不一致 → PositionMismatch 并追加远程快照收敛，无本地记录 → PositionNotRecorded；本地非零持仓远程消失 → PositionMismatch。异常全部落库可查；除「订单不存在」外的交易所错误使核对整体报错，不静默半途而废。本地测试增至 63 个（迁移与拒绝路径 8 个、订单守卫、成交去重、快照最新值、核对三类异常与零异常路径）。
+
 ## Phase 7：执行层
 
 任务：单腿下单、订单状态管理、订单查询、超时处理（用 client_order_id 查询核实，禁止盲目重提）、订单恢复、账户并发控制（按账户/交易对的合理粒度，锁范围最小化）。

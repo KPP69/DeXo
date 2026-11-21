@@ -53,6 +53,10 @@ const MAINNET_INFO_URL: &str = "https://api.hyperliquid.xyz/info";
 /// Credential field holding the agent (API wallet) private key.
 pub const AGENT_KEY_FIELD: &str = "agent_private_key";
 
+/// Error code used when the venue has no order for a cloid. Shared so
+/// reconciliation can recognise the case without stringly-typed drift.
+pub const ORDER_NOT_FOUND_CODE: &str = "ORDER_NOT_FOUND";
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -591,7 +595,7 @@ impl ExchangeAdapter for HyperliquidAdapter {
             .await
             .map_err(map_api_error)?
             .ok_or_else(|| ExchangeError::Remote {
-                code: Some("ORDER_NOT_FOUND".into()),
+                code: Some(ORDER_NOT_FOUND_CODE.into()),
                 message: format!("no order found for cloid {client_order_id}"),
             })?;
         let basic = &update.order;
