@@ -1,0 +1,91 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background-color: #09090b;
+  color: #f4f4f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 12px;
+  background-color: #121214;
+  border-right: 1px solid #1f1f23;
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 4px 8px 16px;
+}
+
+.nav-item {
+  text-align: left;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: #a1a1aa;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  color: #f4f4f5;
+}
+
+.nav-item.active {
+  background-color: #1f1f23;
+  color: #f4f4f5;
+}
+
+.content {
+  flex: 1;
+  padding: 24px 32px;
+}
+
+.content h1 {
+  font-size: 20px;
+  margin: 0 0 16px;
+}
+
+.muted {
+  color: #a1a1aa;
+}
+
+.error {
+  color: #f87171;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  row-gap: 10px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.status-grid dt {
+  color: #a1a1aa;
+}
+
+.status-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

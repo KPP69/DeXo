@@ -1,0 +1,44 @@
+[package]
+name = "dexo"
+version = "0.1.0"
+description = "DeXo portable multi-account, multi-exchange strategy trading desktop app"
+edition = "2021"
+license = "MIT"
+default-run = "dexo"
+
+[lib]
+name = "dexo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = "=2.7.5"
+
+[dependencies]
+tauri = "=2.12.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+async-trait = "0.1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+rust_decimal = { version = "1", features = ["serde"] }
+# Hyperliquid SDK (Phase 4): evaluated 2026-11-21 — MPL-2.0, actively
+# released (0.3.x), rust_decimal 1.x compatible. Pinned exactly because
+# 0.3.x APIs may still change. Only the HTTP feature is enabled; the
+# WebSocket feature joins with the data center (Phase 5).
+hypersdk = { version = "=0.3.1", default-features = false, features = ["http"] }
+# Used directly only for the /info l2Book snapshot, which hypersdk 0.3.1
+# does not expose over HTTP.
+reqwest = { version = "0.12", features = ["json"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tracing-appender = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+tempfile = "3"
+rust_decimal_macros = "1"
+
+[profile.release]
+lto = true

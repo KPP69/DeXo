@@ -1,0 +1,1 @@
+{"$schema":"../gen/schemas/desktop-schema.json","description":"Default capability: only the permissions the Phase 1 skeleton actually needs.","identifier":"default","permissions":["core:default"],"windows":["main"]}

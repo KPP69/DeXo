@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capability: only the permissions the Phase 1 skeleton actually needs.","local":true,"windows":["main"],"permissions":["core:default"]}}
