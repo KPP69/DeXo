@@ -133,6 +133,8 @@ DeXo/
 
 验收：单腿交易闭环正常；部分成交可处理；网络超时不会盲目重复下单；重启后可以恢复未完成订单。
 
+实现记录（2026-11-21）：执行层落地于 execution/ 三个模块。`OrderManager`（order_manager.rs）是唯一能下单/撤单/收敛订单的路径：提交先落库（Created），经 RiskCheck 接口（Phase 8 提供实现，本层只依赖接口；上下文含 Kill Switch 状态，由本层的原子开关承载、Phase 8 驱动）后依次 RiskChecked → Submitting 再发往交易所；同 client_order_id 重复提交直接返回已存订单，永不二次发单（幂等）。结果不确定（超时、网络错误、限频、Unknown）一律转 Unknown 并按 cloid 查单收敛——查到则按权威状态收敛，查不到保持 Unknown 交恢复流程，绝不重提；只有交易所明确拒绝（InvalidRequest、Remote 错误等）才转 Failed。远端状态收敛（apply_remote_order）只走状态机合法迁移，Cancelled 经 CancelPending 中转，收敛不了的拒绝并保留原记录。撤单超时同样转 CancelPending 后查单确认。并发控制按（账户，交易对）粒度异步锁，不同交易对并行；数据库互斥锁从不跨 await 持有。`recovery.rs` 实现启动恢复：逐笔查询本地未完成订单并收敛，统计 converged / still_open / resolved_terminal；交易所查无此单时落异常记录，Unknown 单额外转 Reconciling 标记待复核；其他查询错误使恢复整体报错，不带病启动。`ExecutionEngine`（engine.rs）是策略与 UI 的统一入口（submit/cancel/query/recover）。本地测试增至 71 个：脚本化模拟 Adapter 覆盖下单成功、超时后查单命中（断言只发单一次）、超时后查无此单保持 Unknown、明确拒绝转 Failed、风控拒绝不触达交易所、重复提交幂等、撤单经 CancelPending 收敛、恢复收敛 Filled + 缺失订单落异常。真实账户下单仍未启用（须用户显式启用 + Phase 4 闭环验收）。
+
 ## Phase 8：风控中心
 
 任务：全局风控（全局资金限制、总敞口、最大日亏损、全局熔断）、账户风控（单账户最大仓位与资金使用、杠杆限制、余额检查）、策略风控（策略资金与持仓限制、策略最大亏损、启停限制）、订单风控（下单数量、价格偏差、滑点、最小下单量、数据有效性）、全局 Kill Switch（只禁止新开仓，保留撤单/减仓/平仓，记录原因，可手动解除）。
